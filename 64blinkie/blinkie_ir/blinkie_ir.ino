@@ -3,8 +3,8 @@
 
 
 
-const int letterCount = 9;
-String letters = "disorient";
+const int letterCount = 6;
+String letters = " SHARI";
 
 const int pinCount = 16;
 const int pins[pinCount+1] =
@@ -24,12 +24,19 @@ const int rows[8] = {pins[9], pins[14], pins[8], pins[12], pins[1], pins[7], pin
 int RECV_PIN = 3;
 IRrecv irrecv(RECV_PIN);
 decode_results results;
+// Storage for the recorded code
+int codeType = -1; // The type of code
+unsigned long codeValue; // The code value if not raw
+unsigned int rawCodes[RAWBUF]; // The durations if raw
+int codeLen; // The length of the code
+int toggle = 0; // The RC5/6 toggle state
+
 
 
 int currentLetter = 0;
 long previousMillis = 0; // stores the last time the letter was updated
 
-long interval = 750; //duration to display each letter;
+long interval = 400; //duration to display each letter;
 
 void setup() {
   
@@ -70,18 +77,42 @@ void loop() {
     if (currentLetter == letterCount) {
       currentLetter = 0; // or repeat
     }
+    
   
   }
   
+  
+//  for(int i=0; i<letterCount; i++) {
+    for (int j=0; j<20; j++) {
+      //currentLetter = i;
       displayLetter(letters[currentLetter]);
-      delay(1);
-      if (irrecv.decodeSony(&results)) {
+    //  delayMicroseconds(10);
+      if (irrecv.decode(&results)) {
             storeCode(&results);
+            if (0xA90 == codeValue) {
+              currentLetter = 0;
+            }  
+            if(0x90 == codeValue) {
+              char newLetter = letters.charAt(currentLetter)+1;
+              letters.setCharAt(currentLetter, newLetter);
+            }
+            if(0x890 == codeValue) {
+              char newLetter = letters.charAt(currentLetter)-1;
+              letters.setCharAt(currentLetter, newLetter);
+            }
+            if(0x490 == codeValue) {
+              interval += 10;
+            }
+            if(0xC90 == codeValue) {
+              interval -= 10;
+            }
+            
 
             irrecv.resume(); // resume receiver
 
       }
-   
+    }
+//  }
   
 }
 
@@ -111,12 +142,6 @@ void displayEncodedLetter(char * codedLetter) {
   }
 } 
 
-// Storage for the recorded code
-int codeType = -1; // The type of code
-unsigned long codeValue; // The code value if not raw
-unsigned int rawCodes[RAWBUF]; // The durations if raw
-int codeLen; // The length of the code
-int toggle = 0; // The RC5/6 toggle state
 
 
 void storeCode(decode_results *results) {
